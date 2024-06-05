@@ -8,26 +8,63 @@
 import Foundation
 import SwiftUI
 import AVFoundation
+
+#if targetEnvironment(simulator)
+
+#else
 #if QUICKPOSECORE
 #else
 import QuickPoseCore
 import QuickPoseCamera
 #endif
+#endif
 
+public protocol MockQuickPoseCaptureAVAssetOutputSampleBufferDelegate: AnyObject {
+    func captureAVOutput(didOutput: CVPixelBuffer, timestamp: CMTime, isFrontCamera: Bool)
+}
+
+#if targetEnvironment(simulator)
+public typealias QuickPoseDelegate = MockQuickPoseCaptureAVAssetOutputSampleBufferDelegate
+#else
+public typealias QuickPoseDelegate = QuickPoseCaptureAVAssetOutputSampleBufferDelegate
+#endif
+
+#if targetEnvironment(simulator)
+typealias Camera = QuickPoseSimulatedCameraMock
+#else
+typealias Camera = QuickPoseSimulatedCamera
+#endif
+
+struct QuickPoseSimulatedCameraMock {
+
+    var player: AVPlayer?
+
+    init(useFrontCamera: Bool, asset: AVAsset, onVideoLoop: (()->())?) {
+        fatalError("Not supported by simulator")
+    }
+
+    func stop() {
+        fatalError("Not supported by simulator")
+    }
+
+    func start(delegate: QuickPoseDelegate?) throws {
+        fatalError("Not supported by simulator")
+    }
+}
 
 public struct QuickPoseSimulatedCameraView: View {
 
-    let delegate: QuickPoseCaptureAVAssetOutputSampleBufferDelegate?
+    let delegate: QuickPoseDelegate?
     let videoGravity: AVLayerVideoGravity
     @State var cameraReady: Bool = false
-    @State var camera: QuickPoseSimulatedCamera? = nil
+    @State var camera: Camera? = nil
 
-    public init(useFrontCamera: Bool, delegate: QuickPoseCaptureAVAssetOutputSampleBufferDelegate?, video: URL,  onVideoLoop: (()->())? = nil, videoGravity: AVLayerVideoGravity = .resizeAspectFill) {
-        self.camera = QuickPoseSimulatedCamera(useFrontCamera: useFrontCamera, asset: AVAsset(url: video), onVideoLoop: onVideoLoop)
+    public init(useFrontCamera: Bool, delegate: QuickPoseDelegate?, video: URL,  onVideoLoop: (()->())? = nil, videoGravity: AVLayerVideoGravity = .resizeAspectFill) {
+        self.camera = Camera(useFrontCamera: useFrontCamera, asset: AVAsset(url: video), onVideoLoop: onVideoLoop)
         self.delegate = delegate
         self.videoGravity = videoGravity
     }
-    
+
     public var body: some View {
         ZStack(alignment: .top) {
             if cameraReady, let avAssetPlayer = camera?.player {

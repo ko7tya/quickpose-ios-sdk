@@ -9,9 +9,13 @@ import Foundation
 import AVFoundation
 import UIKit
 import SwiftUI
+#if targetEnvironment(simulator)
+
+#else
 #if QUICKPOSECORE
 #else
 import QuickPoseCore
+#endif
 #endif
 
 /// QuickPoseSimulatedCamera prepares an asset reader for a provided avasset and sets a delegate.
@@ -88,8 +92,19 @@ import QuickPoseCore
 ///              cameraView.layer.addSublayer(customPreviewLayer)
 ///        }
 ///
+
+public protocol MockQuickPoseCaptureAVAssetOutputSampleBufferDelegate: AnyObject {
+    func captureAVOutput(didOutput: CVPixelBuffer, timestamp: CMTime, isFrontCamera: Bool)
+}
+
+#if targetEnvironment(simulator)
+public typealias QuickPoseDelegate = MockQuickPoseCaptureAVAssetOutputSampleBufferDelegate
+#else
+public typealias QuickPoseDelegate = QuickPoseCaptureAVAssetOutputSampleBufferDelegate
+#endif
+
 public class QuickPoseSimulatedCamera {
-    
+
     private let useFrontCamera: Bool
     private let asset: AVAsset
     private let videoFileReadingQueue = DispatchQueue(label: "VideoFileReading", qos: .userInteractive)
@@ -98,7 +113,7 @@ public class QuickPoseSimulatedCamera {
     private var displayLink: CADisplayLink?
     private var videoFileFrameDuration = CMTime.invalid
     
-    private weak var delegate: QuickPoseCaptureAVAssetOutputSampleBufferDelegate?
+    private weak var delegate: QuickPoseDelegate?
     private var onVideoLoop: (()->())?
     public var player: AVPlayer?
     public var playerItem: AVPlayerItem?
@@ -109,7 +124,7 @@ public class QuickPoseSimulatedCamera {
         self.onVideoLoop = onVideoLoop
     }
     
-    public func start(delegate: QuickPoseCaptureAVAssetOutputSampleBufferDelegate?) throws {
+    public func start(delegate: QuickPoseDelegate?) throws {
         self.delegate = delegate
         
         let displayLink = CADisplayLink(target: self, selector: #selector(handleDisplayLink(_:)))
